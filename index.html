@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SVG2TTF</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%20100%22%3E%20%20%3C!--%20檔案外框%20--%3E%20%20%3Cpath%20d=%22M15%208%20L68%208%20L85%2025%20L85%2088%20Q85%2092%2081%2092%20L19%2092%20Q15%2092%2015%2088%20Z%22%20fill=%22none%22%20stroke=%22%231a1a1a%22%20stroke-width=%224.5%22%20stroke-linejoin=%22round%22/%3E%20%20%3C!--%20折角%20--%3E%20%20%3Cpath%20d=%22M68%208%20L68%2025%20L85%2025%22%20fill=%22none%22%20stroke=%22%231a1a1a%22%20stroke-width=%224.5%22%20stroke-linejoin=%22round%22/%3E%20%20%3C!--%20字母%20A%20--%3E%20%20%3Ctext%20x=%2250%22%20y=%2268%22%20text-anchor=%22middle%22%20font-family=%22Georgia,serif%22%20font-size=%2238%22%20font-weight=%22700%22%20fill=%22%231a1a1a%22%3EA%3C/text%3E%20%20%3C!--%20貝茲曲線控制點%20--%3E%20%20%3Crect%20x=%2229%22%20y=%2222%22%20width=%227%22%20height=%227%22%20rx=%221%22%20fill=%22%231a1a1a%22/%3E%20%20%3Crect%20x=%2247%22%20y=%2218%22%20width=%227%22%20height=%227%22%20rx=%221%22%20fill=%22%231a1a1a%22/%3E%20%20%3Crect%20x=%2265%22%20y=%2222%22%20width=%227%22%20height=%227%22%20rx=%221%22%20fill=%22%231a1a1a%22/%3E%20%20%3Crect%20x=%2224%22%20y=%2236%22%20width=%227%22%20height=%227%22%20rx=%221%22%20fill=%22%231a1a1a%22/%3E%20%20%3Crect%20x=%2270%22%20y=%2236%22%20width=%227%22%20height=%227%22%20rx=%221%22%20fill=%22%231a1a1a%22/%3E%20%20%3C!--%20曲線%20--%3E%20%20%3Cpath%20d=%22M32%2025%20Q50%2014%2069%2025%22%20fill=%22none%22%20stroke=%22%231a1a1a%22%20stroke-width=%223%22%20stroke-linecap=%22round%22/%3E%20%20%3Cpath%20d=%22M32%2025%20L27%2039%22%20fill=%22none%22%20stroke=%22%231a1a1a%22%20stroke-width=%222.5%22%20stroke-linecap=%22round%22/%3E%20%20%3Cpath%20d=%22M69%2025%20L73%2039%22%20fill=%22none%22%20stroke=%22%231a1a1a%22%20stroke-width=%222.5%22%20stroke-linecap=%22round%22/%3E%20%20%3C!--%20TTF%20標籤底框%20--%3E%20%20%3Crect%20x=%2220%22%20y=%2276%22%20width=%2260%22%20height=%2214%22%20rx=%227%22%20fill=%22none%22%20stroke=%22%231a1a1a%22%20stroke-width=%223.5%22/%3E%20%20%3C!--%20TTF%20文字%20--%3E%20%20%3Ctext%20x=%2250%22%20y=%2287%22%20text-anchor=%22middle%22%20font-family=%22ui-monospace,monospace%22%20font-size=%2210%22%20font-weight=%22700%22%20fill=%22%231a1a1a%22%3ETTF%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #f6f7f5;
+      --ink: #18201c;
+      --muted: #667069;
+      --line: #d8ddd9;
+      --panel: #ffffff;
+      --accent: #0c7669;
+      --accent-2: #b2453f;
+      --focus: #f2c94c;
+      --soft: #e8f2ef;
+      --shadow: 0 12px 32px rgba(24, 32, 28, .09);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      background: var(--bg);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+    button, input, textarea, select { font: inherit; }
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      cursor: pointer;
+    }
+    button:hover { border-color: #aeb8b1; }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    button.primary:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    input[type="file"] {
+      width: 100%;
+      border: 1px dashed #aeb8b1;
+      background: #fbfcfb;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 12px;
+      outline: none;
+    }
+    textarea:focus, input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(12, 118, 105, .14);
+    }
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 46px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-end;
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 4vw, 54px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .tagline {
+      max-width: 560px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 10px 0 0;
+      font-size: 12px;
+    }
+    .status {
+      min-width: 260px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 9px 10px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .pill strong {
+      display: block;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.2;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-head h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+    .panel-body { padding: 16px; }
+    .step {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .step:last-child { margin-bottom: 0; }
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    label {
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #edf1ee;
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .mode-tabs button {
+      border: 0;
+      background: transparent;
+      min-height: 34px;
+      padding: 0 8px;
+      color: var(--muted);
+    }
+    .mode-tabs button.active {
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 1px 4px rgba(24, 32, 28, .08);
+      font-weight: 700;
+    }
+    .em-choice {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .em-choice label {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .em-choice label:has(input:checked) {
+      border-color: var(--accent);
+      background: var(--soft);
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .preview-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 12px;
+      padding: 16px;
+      min-height: 340px;
+    }
+    .glyph-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      overflow: hidden;
+      min-height: 186px;
+      display: grid;
+      grid-template-rows: 118px auto;
+    }
+    .glyph-art {
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(90deg, rgba(24,32,28,.05) 1px, transparent 1px),
+        linear-gradient(rgba(24,32,28,.05) 1px, transparent 1px);
+      background-size: 18px 18px;
+      border-bottom: 1px solid var(--line);
+      padding: 8px;
+    }
+    .glyph-art svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: hidden;
+    }
+    .glyph-meta {
+      padding: 9px 10px 10px;
+      display: grid;
+      gap: 4px;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+    .glyph-meta .index {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .glyph-meta .map {
+      font-weight: 800;
+      word-break: break-word;
+    }
+    .glyph-meta .box {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .empty {
+      grid-column: 1 / -1;
+      min-height: 320px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed #bdc6bf;
+      border-radius: 8px;
+      padding: 24px;
+      line-height: 1.7;
+    }
+    .notice {
+      border-left: 4px solid var(--focus);
+      background: #fff9df;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: #5f4b00;
+      font-size: 13px;
+      line-height: 1.45;
+      display: none;
+      word-break: break-all;
+      overflow-wrap: break-word;
+      overflow: hidden;
+      max-width: 100%;
+    }
+    .notice.show { display: block; }
+    .error-text { color: var(--accent-2); }
+    @media (max-width: 860px) {
+      header, .grid { grid-template-columns: 1fr; display: grid; }
+      .status { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>SVG2TTF</h1>
+        <p class="tagline">解析 SVG 內的 path / g 字符單位，依左到右、上到下的座標順序套用 Unicode 對照，選擇 EM 大小後輸出 TTF 字型檔。</p>
+      </div>
+      <div class="status" aria-label="目前狀態">
+        <div class="pill"><strong id="glyphCount">0</strong>字符</div>
+        <div class="pill"><strong id="mapCount">0</strong>碼位</div>
+        <div class="pill"><strong id="emStatus">1000</strong>EM</div>
+      </div>
+    </header>
+
+    <section class="grid">
+      <aside class="panel">
+        <div class="panel-head">
+          <h2>輸入設定</h2>
+        </div>
+        <div class="panel-body">
+          <div class="step">
+            <div class="label-row">
+              <label for="svgFile">1. SVG 檔案</label>
+              <span class="hint">path 或 g 依座標順序解析</span>
+            </div>
+            <input id="svgFile" type="file">
+            <div id="sizeNotice" class="notice"></div>
+          </div>
+
+          <div class="step">
+            <div class="label-row">
+              <label for="unicodeFile">2. Unicode 對應碼檔</label>
+              <span class="hint">可上傳或直接貼上</span>
+            </div>
+            <input id="unicodeFile" type="file" accept=".txt,text/plain">
+            <div class="mode-tabs" role="tablist" aria-label="對應模式">
+              <button type="button" id="plainMode" class="active">純文字</button>
+              <button type="button" id="uniMode">uni 格式</button>
+            </div>
+            <textarea id="unicodeText" spellcheck="false" placeholder="例如：ABCDEFGabcdefg"></textarea>
+            <div id="mapNotice" class="notice"></div>
+          </div>
+
+          <div class="step">
+            <label>3. EM 大小</label>
+            <div class="em-choice">
+              <label><input type="radio" name="em" value="1000" checked> EM 1000</label>
+              <label><input type="radio" name="em" value="2048"> EM 2048</label>
+            </div>
+          </div>
+
+          <div class="step">
+            <label for="fileName">4. 檔名</label>
+            <input id="fileName" type="text" value="HFFont.ttf" placeholder="HFFont.ttf">
+          </div>
+
+          <div class="actions">
+            <button id="downloadBtn" class="primary" disabled>下載 TTF</button>
+            <button id="resetBtn">清除全部</button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>字符偵測預覽</h2>
+          <div class="preview-toolbar">
+            <span id="previewState">等待上傳 SVG</span>
+          </div>
+        </div>
+        <div id="previewGrid" class="preview-grid">
+          <div class="empty">上傳 SVG 後，這裡會即時顯示每個偵測到的字符、bounding box 與 Unicode 對應結果。</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      svgFile: document.getElementById('svgFile'),
+      unicodeFile: document.getElementById('unicodeFile'),
+      unicodeText: document.getElementById('unicodeText'),
+      plainMode: document.getElementById('plainMode'),
+      uniMode: document.getElementById('uniMode'),
+      glyphCount: document.getElementById('glyphCount'),
+      mapCount: document.getElementById('mapCount'),
+      emStatus: document.getElementById('emStatus'),
+      sizeNotice: document.getElementById('sizeNotice'),
+      mapNotice: document.getElementById('mapNotice'),
+      previewGrid: document.getElementById('previewGrid'),
+      previewState: document.getElementById('previewState'),
+      downloadBtn: document.getElementById('downloadBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      fileName: document.getElementById('fileName')
+    };
+
+    const state = {
+      svgText: '',
+      svgDoc: null,
+      baselines: [],
+      glyphs: [],
+      mappings: [],
+      mode: 'plain',
+      em: 1000
+    };
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+
+    els.svgFile.addEventListener('change', onSvgFile);
+    els.unicodeFile.addEventListener('change', onUnicodeFile);
+    els.unicodeText.addEventListener('input', updateMappings);
+    els.plainMode.addEventListener('click', () => setMode('plain'));
+    els.uniMode.addEventListener('click', () => setMode('uni'));
+    document.querySelectorAll('input[name="em"]').forEach(r => {
+      r.addEventListener('change', () => {
+        state.em = Number(document.querySelector('input[name="em"]:checked').value);
+        els.emStatus.textContent = state.em;
+        renderPreview();
+      });
+    });
+    els.fileName.addEventListener('input', updateDownloadState);
+    els.downloadBtn.addEventListener('click', downloadFont);
+    els.resetBtn.addEventListener('click', resetAll);
+
+    async function onSvgFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) {
+        const message = 'SVG 檔案超過 10MB，解析可能需要較久，但仍可繼續操作。';
+        alert(message);
+        showNotice(els.sizeNotice, message);
+      } else {
+        hideNotice(els.sizeNotice);
+      }
+      const text = await file.text();
+      parseSvg(text);
+    }
+
+    async function onUnicodeFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      els.unicodeText.value = await file.text();
+      updateMappings();
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      els.plainMode.classList.toggle('active', mode === 'plain');
+      els.uniMode.classList.toggle('active', mode === 'uni');
+      els.unicodeText.placeholder = mode === 'plain' ? '例如：ABCDEFGabcdefg' : 'uni0041\nuni0042\nuni0043';
+      updateMappings();
+    }
+
+    function parseSvg(text) {
+      let doc;
+      try {
+        doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+      } catch (err) {
+        alertInvalidSvg();
+        return;
+      }
+      if (doc.querySelector('parsererror') || !doc.documentElement || doc.documentElement.localName.toLowerCase() !== 'svg') {
+        alertInvalidSvg();
+        return;
+      }
+
+      const svg = doc.documentElement;
+      const units = collectGlyphUnits(svg);
+      if (!units.length) {
+        alertInvalidSvg();
+        return;
+      }
+
+      state.svgText = text;
+      state.svgDoc = doc;
+      state.baselines = Array.from(doc.querySelectorAll('line'))
+        .map(el => parseFloat(el.getAttribute('y1')))
+        .filter(y => !isNaN(y))
+        .sort((a, b) => a - b);
+      state.glyphs = sortGlyphsForReading(units.map((unit, index) => makeGlyph(unit, index)).filter(Boolean));
+      if (!state.glyphs.length) {
+        alertInvalidSvg();
+        return;
+      }
+      els.previewState.textContent = `已偵測 ${state.glyphs.length} 個字符`;
+      updateMappings();
+    }
+
+    function alertInvalidSvg() {
+      alert('無法偵測到任何 <path> 或 <g>，或上傳的不是有效 SVG 檔案。');
+    }
+
+    function collectGlyphUnits(svg) {
+      const all = Array.from(svg.querySelectorAll('path,g'));
+      const countedGroups = new Set();
+      const units = [];
+      for (const el of all) {
+        if (el.localName === 'g') {
+          if (el.querySelector('path')) {
+            units.push(el);
+            countedGroups.add(el);
+          }
+          continue;
+        }
+        if (el.localName === 'path') {
+          const insideCountedGroup = Array.from(countedGroups).some(g => g.contains(el));
+          if (!insideCountedGroup) units.push(el);
+        }
+      }
+      return units;
+    }
+
+    function sortGlyphsForReading(glyphs) {
+      if (glyphs.length < 2) return glyphs.map((glyph, index) => ({ ...glyph, index }));
+      const heights = glyphs.map(g => g.box.height).filter(h => h > 0).sort((a, b) => a - b);
+      const medianHeight = heights[Math.floor(heights.length / 2)] || 1;
+      const rowTolerance = Math.max(8, medianHeight * 0.55);
+      const sortedByTop = glyphs.slice().sort((a, b) => {
+        if (Math.abs(a.box.y - b.box.y) > rowTolerance) return a.box.y - b.box.y;
+        return a.box.x - b.box.x;
+      });
+
+      const rows = [];
+      for (const glyph of sortedByTop) {
+        const centerY = glyph.box.y + glyph.box.height / 2;
+        let row = rows.find(r => Math.abs(centerY - r.centerY) <= rowTolerance);
+        if (!row) {
+          row = { centerY, glyphs: [] };
+          rows.push(row);
+        }
+        row.glyphs.push(glyph);
+        row.centerY = row.glyphs.reduce((sum, g) => sum + g.box.y + g.box.height / 2, 0) / row.glyphs.length;
+      }
+
+      return rows
+        .sort((a, b) => a.centerY - b.centerY)
+        .flatMap(row => row.glyphs.sort((a, b) => a.box.x - b.box.x))
+        .map((glyph, index) => ({ ...glyph, index }));
+    }
+
+    function makeGlyph(unit, index) {
+      const paths = unit.localName === 'path' ? [unit] : Array.from(unit.querySelectorAll('path'));
+      const contours = [];
+      for (const pathEl of paths) {
+        const d = pathEl.getAttribute('d') || '';
+        const parsed = parsePathData(d);
+        for (const contour of parsed) {
+          if (contour.length > 1) contours.push(contour);
+        }
+      }
+      const box = contoursBBox(contours);
+      if (!box) return null;
+      return {
+        index,
+        type: unit.localName,
+        element: unit,
+        paths: paths.map(p => p.getAttribute('d') || ''),
+        contours,
+        box,
+        paddedBox: {
+          x: box.x - 10,
+          y: box.y - 10,
+          width: box.width + 20,
+          height: box.height + 20
+        }
+      };
+    }
+
+    function updateMappings() {
+      let result;
+      if (state.mode === 'plain') result = parsePlainMappings(els.unicodeText.value);
+      else result = parseUniMappings(els.unicodeText.value);
+
+      state.mappings = result.items;
+      els.mapCount.textContent = state.mappings.length;
+      if (result.error) {
+        alert(result.error);
+        showNotice(els.mapNotice, result.error, true);
+      } else if (state.glyphs.length && state.mappings.length && state.glyphs.length !== state.mappings.length) {
+        const diff = state.mappings.length - state.glyphs.length;
+        const message = diff > 0 ? `Unicode 數量比字符多出 ${diff} 個。` : `Unicode 數量比字符缺少 ${Math.abs(diff)} 個。`;
+        alert(message);
+        showNotice(els.mapNotice, message, true);
+      } else {
+        hideNotice(els.mapNotice);
+      }
+      renderPreview();
+      updateDownloadState();
+    }
+
+    function parsePlainMappings(text) {
+      if (!text) return { items: [] };
+      if (/\s/.test(text)) {
+        return { items: [], error: '純文字輸入含空白或換行，會造成多算。請移除所有空白與換行。' };
+      }
+      return {
+        items: Array.from(text).map(ch => ({
+          label: ch,
+          codePoint: ch.codePointAt(0),
+          uni: 'uni' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')
+        }))
+      };
+    }
+
+    function parseUniMappings(text) {
+      if (!text.trim()) return { items: [] };
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const bad = lines.filter(line => !/^uni[0-9A-Fa-f]{4,6}$/.test(line) || Number.parseInt(line.slice(3), 16) > 0x10FFFF);
+      if (bad.length) {
+        const preview = bad.slice(0, 5).join(', ') + (bad.length > 5 ? ` … 等 ${bad.length} 個` : '');
+        return { items: [], error: `uni 格式輸入有錯字：${preview}` };
+      }
+      return {
+        items: lines.map(line => {
+          const cp = Number.parseInt(line.slice(3), 16);
+          return {
+            label: String.fromCodePoint(cp),
+            codePoint: cp,
+            uni: 'uni' + cp.toString(16).toUpperCase().padStart(4, '0')
+          };
+        })
+      };
+    }
+
+    function renderPreview() {
+      els.glyphCount.textContent = state.glyphs.length;
+      els.mapCount.textContent = state.mappings.length;
+      els.emStatus.textContent = state.em;
+      if (!state.glyphs.length) {
+        els.previewGrid.innerHTML = '<div class="empty">上傳 SVG 後，這裡會即時顯示每個偵測到的字符、bounding box 與 Unicode 對應結果。</div>';
+        els.previewState.textContent = '等待上傳 SVG';
+        return;
+      }
+      // 以最大 paddedBox 為統一基準，保持相對比例
+      const maxW = Math.max(...state.glyphs.map(g => g.paddedBox.width || 1));
+      const maxH = Math.max(...state.glyphs.map(g => g.paddedBox.height || 1));
+      els.previewGrid.innerHTML = '';
+      for (const glyph of state.glyphs) {
+        const map = state.mappings[glyph.index];
+        const card = document.createElement('article');
+        card.className = 'glyph-card';
+        const art = document.createElement('div');
+        art.className = 'glyph-art';
+        art.appendChild(makePreviewSvg(glyph, maxW, maxH));
+        const meta = document.createElement('div');
+        meta.className = 'glyph-meta';
+        const mapText = map ? `${escapeHtml(map.label)} / ${map.uni}` : '<span class="error-text">尚未對應</span>';
+        meta.innerHTML = `
+          <div class="index">#${glyph.index + 1} &lt;${glyph.type}&gt;</div>
+          <div class="map">${mapText}</div>
+          <div class="box">${Math.round(glyph.box.width)} x ${Math.round(glyph.box.height)} px</div>
+        `;
+        card.append(art, meta);
+        els.previewGrid.appendChild(card);
+      }
+    }
+
+    function makePreviewSvg(glyph, maxW, maxH) {
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      const b = glyph.paddedBox;
+      const cx = b.x + b.width / 2;
+      const cy = b.y + b.height / 2;
+      const vx = cx - maxW / 2;
+      const vy = cy - maxH / 2;
+      svg.setAttribute('viewBox', `${vx} ${vy} ${maxW} ${maxH}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.setAttribute('aria-hidden', 'true');
+
+      for (const d of glyph.paths) {
+        const p = document.createElementNS(SVG_NS, 'path');
+        p.setAttribute('d', d);
+        p.setAttribute('fill', '#18201c');
+        svg.appendChild(p);
+      }
+      const rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('x', glyph.box.x);
+      rect.setAttribute('y', glyph.box.y);
+      rect.setAttribute('width', glyph.box.width);
+      rect.setAttribute('height', glyph.box.height);
+      rect.setAttribute('fill', 'none');
+      rect.setAttribute('stroke', '#b2453f');
+      rect.setAttribute('stroke-width', Math.max(1, Math.max(glyph.box.width, glyph.box.height) / 120));
+      svg.appendChild(rect);
+      return svg;
+    }
+
+    function updateDownloadState() {
+      const ready = state.glyphs.length > 0 &&
+        state.mappings.length === state.glyphs.length &&
+        els.fileName.value.trim().length > 0;
+      els.downloadBtn.disabled = !ready;
+    }
+
+    function downloadFont() {
+      const rawName = els.fileName.value.trim();
+      if (!rawName) {
+        alert('未輸入檔名。');
+        return;
+      }
+      if (state.mappings.length !== state.glyphs.length) {
+        const diff = state.mappings.length - state.glyphs.length;
+        alert(diff > 0 ? `Unicode 數量比字符多出 ${diff} 個。` : `Unicode 數量比字符缺少 ${Math.abs(diff)} 個。`);
+        return;
+      }
+      try {
+        const baseName = rawName.replace(/\.ttf$/i, '').trim() || 'SVG2TTF';
+        const font = buildTtf(state.glyphs, state.mappings, state.em, baseName);
+        const name = baseName.replace(/[^A-Za-z0-9]/g, '') + '-Regular.ttf';
+        const blob = new Blob([font], { type: 'font/ttf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        URL.revokeObjectURL(link.href);
+        link.remove();
+      } catch (err) {
+        console.error(err);
+        alert('產生 TTF 時發生錯誤：' + err.message);
+      }
+    }
+
+    function resetAll() {
+      state.svgText = '';
+      state.svgDoc = null;
+      state.baselines = [];
+      state.glyphs = [];
+      state.mappings = [];
+      els.svgFile.value = '';
+      els.unicodeFile.value = '';
+      els.unicodeText.value = '';
+      els.fileName.value = 'HFFont.ttf';
+      hideNotice(els.sizeNotice);
+      hideNotice(els.mapNotice);
+      renderPreview();
+      updateDownloadState();
+    }
+
+    function showNotice(el, text) {
+      el.textContent = text;
+      el.classList.add('show');
+    }
+
+    function hideNotice(el) {
+      el.textContent = '';
+      el.classList.remove('show');
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function parsePathData(d) {
+      const tokens = tokenizePath(d);
+      const contours = [];
+      let contour = [];
+      let i = 0, cmd = '';
+      let x = 0, y = 0, sx = 0, sy = 0;
+      let lastC = null, lastQ = null;
+      const isCmd = v => /^[a-zA-Z]$/.test(v);
+      const num = () => Number(tokens[i++]);
+      const add = (px, py, on = true) => { contour.push({ x: px, y: py, on }); x = px; y = py; };
+      const close = () => {
+        if (contour.length) {
+          if (Math.hypot(contour[0].x - contour[contour.length - 1].x, contour[0].y - contour[contour.length - 1].y) > 0.001) {
+            contour.push({ x: contour[0].x, y: contour[0].y, on: true });
+          }
+          contours.push(cleanContour(contour));
+          contour = [];
+        }
+        x = sx; y = sy;
+      };
+
+      while (i < tokens.length) {
+        if (isCmd(tokens[i])) cmd = tokens[i++];
+        const rel = cmd === cmd.toLowerCase();
+        const C = cmd.toUpperCase();
+        if (C === 'M') {
+          let first = true;
+          while (i < tokens.length && !isCmd(tokens[i])) {
+            const nx = num(), ny = num();
+            const px = rel ? x + nx : nx;
+            const py = rel ? y + ny : ny;
+            if (first) {
+              if (contour.length) contours.push(cleanContour(contour));
+              contour = [];
+              sx = px; sy = py;
+              add(px, py);
+              first = false;
+            } else {
+              add(px, py);
+            }
+          }
+          lastC = lastQ = null;
+        } else if (C === 'L') {
+          while (i < tokens.length && !isCmd(tokens[i])) add(rel ? x + num() : num(), rel ? y + num() : num());
+          lastC = lastQ = null;
+        } else if (C === 'H') {
+          while (i < tokens.length && !isCmd(tokens[i])) add(rel ? x + num() : num(), y);
+          lastC = lastQ = null;
+        } else if (C === 'V') {
+          while (i < tokens.length && !isCmd(tokens[i])) add(x, rel ? y + num() : num());
+          lastC = lastQ = null;
+        } else if (C === 'C') {
+          while (i < tokens.length && !isCmd(tokens[i])) {
+            const x1 = rel ? x + num() : num(), y1 = rel ? y + num() : num();
+            const x2 = rel ? x + num() : num(), y2 = rel ? y + num() : num();
+            const x3 = rel ? x + num() : num(), y3 = rel ? y + num() : num();
+            addCubicAsQuadratics(contour, x, y, x1, y1, x2, y2, x3, y3);
+            x = x3; y = y3; lastC = { x: x2, y: y2 }; lastQ = null;
+          }
+        } else if (C === 'S') {
+          while (i < tokens.length && !isCmd(tokens[i])) {
+            const x1 = lastC ? 2 * x - lastC.x : x;
+            const y1 = lastC ? 2 * y - lastC.y : y;
+            const x2 = rel ? x + num() : num(), y2 = rel ? y + num() : num();
+            const x3 = rel ? x + num() : num(), y3 = rel ? y + num() : num();
+            addCubicAsQuadratics(contour, x, y, x1, y1, x2, y2, x3, y3);
+            x = x3; y = y3; lastC = { x: x2, y: y2 }; lastQ = null;
+          }
+        } else if (C === 'Q') {
+          while (i < tokens.length && !isCmd(tokens[i])) {
+            const x1 = rel ? x + num() : num(), y1 = rel ? y + num() : num();
+            const x2 = rel ? x + num() : num(), y2 = rel ? y + num() : num();
+            contour.push({ x: x1, y: y1, on: false }, { x: x2, y: y2, on: true });
+            x = x2; y = y2; lastQ = { x: x1, y: y1 }; lastC = null;
+          }
+        } else if (C === 'T') {
+          while (i < tokens.length && !isCmd(tokens[i])) {
+            const x1 = lastQ ? 2 * x - lastQ.x : x;
+            const y1 = lastQ ? 2 * y - lastQ.y : y;
+            const x2 = rel ? x + num() : num(), y2 = rel ? y + num() : num();
+            contour.push({ x: x1, y: y1, on: false }, { x: x2, y: y2, on: true });
+            x = x2; y = y2; lastQ = { x: x1, y: y1 }; lastC = null;
+          }
+        } else if (C === 'Z') {
+          close();
+          lastC = lastQ = null;
+        } else if (C === 'A') {
+          while (i < tokens.length && !isCmd(tokens[i])) {
+            num(); num(); num(); num(); num();
+            const px = rel ? x + num() : num();
+            const py = rel ? y + num() : num();
+            add(px, py);
+          }
+          lastC = lastQ = null;
+        } else {
+          throw new Error('不支援的 SVG path 指令：' + cmd);
+        }
+      }
+      if (contour.length) contours.push(cleanContour(contour));
+      return contours.filter(c => c.length > 1);
+    }
+
+    function tokenizePath(d) {
+      return (d.match(/[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) || []);
+    }
+
+    function addCubicAsQuadratics(out, x0, y0, x1, y1, x2, y2, x3, y3) {
+      // 自適應細分：依誤差決定分段數，最大 32 段，誤差門檻 0.4px
+      const MAX_DEPTH = 5; // 2^5 = 32 段上限
+      const ERROR_THRESHOLD = 0.4;
+
+      function cubicToQuadError(p0, p1, p2, p3) {
+        // 計算 cubic 轉 quadratic 的最大誤差（中點距離）
+        const qx = (3 * (p1.x + p2.x) - p0.x - p3.x) / 4;
+        const qy = (3 * (p1.y + p2.y) - p0.y - p3.y) / 4;
+        // 誤差估計：cubic 控制點與 quadratic 等效控制點的偏差
+        const ex = Math.abs(p1.x + p2.x - 2 * qx) + Math.abs(p1.y + p2.y - 2 * qy);
+        const dx = Math.hypot(p1.x - (p0.x + p3.x) / 2, p1.y - (p0.y + p3.y) / 2);
+        const dy = Math.hypot(p2.x - (p0.x + p3.x) / 2, p2.y - (p0.y + p3.y) / 2);
+        return Math.max(ex * 0.25, (dx + dy) * 0.05);
+      }
+
+      function subdivide(p0, p1, p2, p3, depth) {
+        const err = cubicToQuadError(p0, p1, p2, p3);
+        if (depth >= MAX_DEPTH || err <= ERROR_THRESHOLD) {
+          // 直接輸出這段的 quadratic 近似
+          const q1 = { x: (3 * p1.x - p0.x) / 2, y: (3 * p1.y - p0.y) / 2 };
+          const q2 = { x: (3 * p2.x - p3.x) / 2, y: (3 * p2.y - p3.y) / 2 };
+          out.push(
+            { x: (q1.x + q2.x) / 2, y: (q1.y + q2.y) / 2, on: false },
+            { x: p3.x, y: p3.y, on: true }
+          );
+        } else {
+          // 從中點細分
+          const m = splitCubic(p0, p1, p2, p3, 0.5);
+          subdivide(m.left[0], m.left[1], m.left[2], m.left[3], depth + 1);
+          subdivide(m.right[0], m.right[1], m.right[2], m.right[3], depth + 1);
+        }
+      }
+
+      subdivide(
+        { x: x0, y: y0 }, { x: x1, y: y1 },
+        { x: x2, y: y2 }, { x: x3, y: y3 },
+        0
+      );
+    }
+
+    function splitCubicRange(p0, p1, p2, p3, start, end) {
+      const right = splitCubic(p0, p1, p2, p3, start).right;
+      if (start === 1) return [p3, p3, p3, p3];
+      return splitCubic(right[0], right[1], right[2], right[3], (end - start) / (1 - start)).left;
+    }
+
+    function splitCubic(p0, p1, p2, p3, t) {
+      const p01 = lerpPoint(p0, p1, t);
+      const p12 = lerpPoint(p1, p2, t);
+      const p23 = lerpPoint(p2, p3, t);
+      const p012 = lerpPoint(p01, p12, t);
+      const p123 = lerpPoint(p12, p23, t);
+      const p0123 = lerpPoint(p012, p123, t);
+      return {
+        left: [p0, p01, p012, p0123],
+        right: [p0123, p123, p23, p3]
+      };
+    }
+
+    function lerpPoint(a, b, t) {
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+
+    function cleanContour(contour) {
+      const cleaned = [];
+      for (const p of contour) {
+        const last = cleaned[cleaned.length - 1];
+        if (!last || Math.hypot(last.x - p.x, last.y - p.y) > 0.001 || last.on !== p.on) cleaned.push(p);
+      }
+      if (cleaned.length > 1) {
+        const a = cleaned[0], b = cleaned[cleaned.length - 1];
+        if (Math.hypot(a.x - b.x, a.y - b.y) < 0.001) cleaned.pop();
+      }
+      return cleaned;
+    }
+
+    function contoursBBox(contours) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const contour of contours) {
+        for (const p of contour) {
+          minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+          maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+        }
+      }
+      if (!Number.isFinite(minX)) return null;
+      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, maxX, maxY };
+    }
+
+
+    function calcUnicodeRanges(codepoints) {
+      // OpenType ulUnicodeRange bit definitions (OS/2 spec)
+      const ranges = [
+        [0, 0x0020, 0x007E],   // bit 0: Basic Latin
+        [1, 0x00A0, 0x00FF],   // bit 1: Latin-1 Supplement
+        [2, 0x0100, 0x017F],   // bit 2: Latin Extended-A
+        [3, 0x0180, 0x024F],   // bit 3: Latin Extended-B
+        [4, 0x0250, 0x02AF],   // bit 4: IPA Extensions
+        [5, 0x02B0, 0x02FF],   // bit 5: Spacing Modifier Letters
+        [6, 0x0300, 0x036F],   // bit 6: Combining Diacritical Marks
+        [7, 0x0370, 0x03FF],   // bit 7: Greek and Coptic
+        [9, 0x0400, 0x04FF],   // bit 9: Cyrillic
+        [11, 0x0600, 0x06FF],  // bit 11: Arabic
+        [13, 0x0900, 0x097F],  // bit 13: Devanagari
+        [28, 0x2000, 0x206F],  // bit 28: General Punctuation
+        [29, 0x2070, 0x209F],  // bit 29: Superscripts and Subscripts
+        [30, 0x20A0, 0x20CF],  // bit 30: Currency Symbols
+        [36, 0x2200, 0x22FF],  // bit 36: Mathematical Operators
+        [55, 0x4E00, 0x9FFF],  // bit 55: CJK Unified Ideographs
+        [57, 0xAC00, 0xD7AF],  // bit 57: Hangul Syllables
+      ];
+      const bits = [0, 0, 0, 0];
+      for (const cp of codepoints) {
+        for (const [bit, start, end] of ranges) {
+          if (cp >= start && cp <= end) {
+            bits[Math.floor(bit / 32)] |= (1 << (bit % 32));
+          }
+        }
+      }
+      return bits;
+    }
+
+    function calcCodePageRanges(codepoints) {
+      const bits = [0, 0];
+      const hasLatin = codepoints.some(cp => cp >= 0x0020 && cp <= 0x007E);
+      if (hasLatin) bits[0] |= (1 << 0);  // bit 0: Latin 1
+      const hasCyrillic = codepoints.some(cp => cp >= 0x0400 && cp <= 0x04FF);
+      if (hasCyrillic) bits[0] |= (1 << 2); // bit 2: Cyrillic
+      const hasGreek = codepoints.some(cp => cp >= 0x0370 && cp <= 0x03FF);
+      if (hasGreek) bits[0] |= (1 << 3);  // bit 3: Greek
+      const hasCJK = codepoints.some(cp => cp >= 0x4E00 && cp <= 0x9FFF);
+      if (hasCJK) { bits[0] |= (1 << 17); bits[0] |= (1 << 18); } // bit 17/18: CJK
+      const hasHangul = codepoints.some(cp => cp >= 0xAC00 && cp <= 0xD7AF);
+      if (hasHangul) bits[0] |= (1 << 19); // bit 19: Korean
+      return bits;
+    }
+
+    function buildTtf(glyphs, mappings, unitsPerEm, familyName) {
+      const targetHeight = unitsPerEm === 2048 ? 1800 : 880;
+      const bearing = unitsPerEm === 2048 ? 100 : 50; // LSB = RSB
+      const maxBoxHeight = glyphs.reduce((max, glyph) => {
+        const box = glyph.box || contoursBBox(glyph.contours);
+        return Math.max(max, box ? box.height : 0);
+      }, 1);
+      const scale = targetHeight / maxBoxHeight;
+
+      const fontGlyphs = [{ name: '.notdef', contours: [], advanceWidth: 1000, codePoint: 0 }];
+      for (let i = 0; i < glyphs.length; i++) {
+        const glyph = glyphs[i];
+        const scaledWidth = Math.round(glyph.box.width * scale);
+        const advanceWidth = scaledWidth + bearing * 2;
+        // 找距字符底部絕對距離最近的 <line>，無則用字符底部
+        const glyphBottom = glyph.box.y + glyph.box.height;
+        const baselineY = state.baselines.length
+          ? state.baselines.reduce((closest, bl) =>
+              Math.abs(bl - glyphBottom) < Math.abs(closest - glyphBottom) ? bl : closest
+            , state.baselines[0])
+          : glyphBottom;
+        const contours = glyph.contours.map(contour => contour.map(p => ({
+          x: Math.round((p.x - glyph.box.x) * scale) + bearing,
+          y: Math.round((baselineY - p.y) * scale),
+          on: p.on !== false
+        })));
+        fontGlyphs.push({
+          name: mappings[i].uni,
+          contours,
+          advanceWidth,
+          codePoint: mappings[i].codePoint
+        });
+      }
+      return new TtfBuilder(fontGlyphs, mappings, unitsPerEm, familyName).build();
+    }
+
+    class Writer {
+      constructor(size = 0) { this.bytes = []; if (size) this.bytes.length = 0; }
+      u8(v) { this.bytes.push(v & 255); }
+      i8(v) { this.u8(v); }
+      u16(v) { this.u8(v >> 8); this.u8(v); }
+      i16(v) { this.u16(v & 65535); }
+      u32(v) { this.u8(v >>> 24); this.u8(v >>> 16); this.u8(v >>> 8); this.u8(v); }
+      i32(v) { this.u32(v >>> 0); }
+      tag(s) { for (let i = 0; i < 4; i++) this.u8(s.charCodeAt(i)); }
+      bytesOf(arr) { for (const b of arr) this.u8(b); }
+      str(s) { for (let i = 0; i < s.length; i++) this.u8(s.charCodeAt(i)); }
+      pad4() { while (this.bytes.length % 4) this.u8(0); }
+      get array() { return new Uint8Array(this.bytes); }
+    }
+
+    class TtfBuilder {
+      constructor(glyphs, mappings, unitsPerEm, familyName) {
+        this.glyphs = glyphs;
+        this.mappings = mappings;
+        this.unitsPerEm = unitsPerEm;
+        this.familyName = familyName || 'SVG2TTF';
+        this.fontBox = this.computeFontBox();
+      }
+
+      computeFontBox() {
+        const boxes = this.glyphs.map(g => g.contours.length ? contoursBBox(g.contours) : null).filter(Boolean);
+        if (!boxes.length) return { x: 0, y: 0, maxX: this.unitsPerEm, maxY: this.unitsPerEm };
+        return {
+          x: Math.min(0, ...boxes.map(b => b.x)),
+          y: Math.min(0, ...boxes.map(b => b.y)),
+          maxX: Math.max(this.unitsPerEm, ...boxes.map(b => b.maxX)),
+          maxY: Math.max(this.unitsPerEm, ...boxes.map(b => b.maxY))
+        };
+      }
+
+      build() {
+        const glyfLoca = this.buildGlyfAndLoca();
+        const tables = {
+          cmap: this.buildCmap(),
+          glyf: glyfLoca.glyf,
+          head: this.buildHead(glyfLoca.indexToLocFormat),
+          hhea: this.buildHhea(),
+          hmtx: this.buildHmtx(),
+          loca: glyfLoca.loca,
+          maxp: this.buildMaxp(),
+          name: this.buildName(),
+          'OS/2': this.buildOS2(),
+          post: this.buildPost()
+        };
+        return this.assemble(tables);
+      }
+
+      buildGlyfAndLoca() {
+        const w = new Writer();
+        const offsets = [];
+        for (const glyph of this.glyphs) {
+          offsets.push(w.bytes.length);
+          const data = this.glyphData(glyph);
+          w.bytesOf(data);
+          w.pad4();
+        }
+        offsets.push(w.bytes.length);
+        const useLong = offsets.some(o => o / 2 > 65535 || o % 2 !== 0);
+        const loca = new Writer();
+        for (const o of offsets) useLong ? loca.u32(o) : loca.u16(o / 2);
+        return { glyf: w.array, loca: loca.array, indexToLocFormat: useLong ? 1 : 0 };
+      }
+
+      glyphData(glyph) {
+        const w = new Writer();
+        if (!glyph.contours.length) {
+          w.i16(0); w.i16(0); w.i16(0); w.i16(0); w.i16(0);
+          return w.array;
+        }
+        const points = glyph.contours.flat();
+        const box = contoursBBox(glyph.contours);
+        w.i16(glyph.contours.length);
+        w.i16(Math.round(box.x));
+        w.i16(Math.round(box.y));
+        w.i16(Math.round(box.maxX));
+        w.i16(Math.round(box.maxY));
+        let end = -1;
+        for (const contour of glyph.contours) {
+          end += contour.length;
+          w.u16(end);
+        }
+        w.u16(0);
+        for (const p of points) w.u8(p.on === false ? 0 : 1);
+        let prev = 0;
+        for (const p of points) { w.i16(p.x - prev); prev = p.x; }
+        prev = 0;
+        for (const p of points) { w.i16(p.y - prev); prev = p.y; }
+        return w.array;
+      }
+
+      buildCmap() {
+        const pairs = this.glyphs.slice(1)
+          .map((g, i) => ({ cp: g.codePoint, gid: i + 1 }))
+          .filter(p => p.cp >= 0 && p.cp <= 0xFFFF)
+          .sort((a, b) => a.cp - b.cp);
+        const groups = [];
+        for (const p of pairs) {
+          const last = groups[groups.length - 1];
+          if (last && p.cp === last.end + 1 && p.gid === last.gids[last.gids.length - 1] + 1) {
+            last.end = p.cp; last.gids.push(p.gid);
+          } else {
+            groups.push({ start: p.cp, end: p.cp, gids: [p.gid] });
+          }
+        }
+        groups.push({ start: 0xFFFF, end: 0xFFFF, gids: [0] });
+        const segCount = groups.length;
+        const searchRange = Math.pow(2, Math.floor(Math.log2(segCount))) * 2;
+        const entrySelector = Math.floor(Math.log2(segCount));
+        const rangeShift = segCount * 2 - searchRange;
+        const sub = new Writer();
+        sub.u16(4);
+        const lengthPos = sub.bytes.length; sub.u16(0);
+        sub.u16(0);
+        sub.u16(segCount * 2);
+        sub.u16(searchRange);
+        sub.u16(entrySelector);
+        sub.u16(rangeShift);
+        groups.forEach(g => sub.u16(g.end));
+        sub.u16(0);
+        groups.forEach(g => sub.u16(g.start));
+        groups.forEach(g => sub.i16(0));
+        const idRangeOffsetPos = sub.bytes.length;
+        groups.forEach(() => sub.u16(0));
+        const glyphArrayStart = sub.bytes.length;
+        groups.forEach((g, idx) => {
+          if (g.start === 0xFFFF) return;
+          const offsetFromThis = glyphArrayStart + sub.bytes.length - glyphArrayStart - (idRangeOffsetPos + idx * 2);
+          sub.bytes[idRangeOffsetPos + idx * 2] = (offsetFromThis >> 8) & 255;
+          sub.bytes[idRangeOffsetPos + idx * 2 + 1] = offsetFromThis & 255;
+          g.gids.forEach(gid => sub.u16(gid));
+        });
+        const len = sub.bytes.length;
+        sub.bytes[lengthPos] = (len >> 8) & 255;
+        sub.bytes[lengthPos + 1] = len & 255;
+        const w = new Writer();
+        w.u16(0); w.u16(1);
+        w.u16(3); w.u16(1); w.u32(12);
+        w.bytesOf(sub.array);
+        return w.array;
+      }
+
+      buildHead(format) {
+        const w = new Writer();
+        w.u32(0x00010000); w.u32(0x00010000); w.u32(0); w.u32(0x5F0F3CF5);
+        w.u16(0x000B); w.u16(this.unitsPerEm);
+        // created / modified：距 1904-01-01 00:00:00 的秒數（u64 = 兩個 u32）
+        const macEpoch = BigInt(Date.UTC(1904, 0, 1)) / 1000n;
+        const nowSec = BigInt(Math.floor(Date.now() / 1000)) - macEpoch;
+        const hi = Number(nowSec >> 32n) >>> 0;
+        const lo = Number(nowSec & 0xFFFFFFFFn) >>> 0;
+        w.u32(hi); w.u32(lo); // created
+        w.u32(hi); w.u32(lo); // modified
+        const minX = this.fontBox.x;
+        const minY = this.fontBox.y;
+        const maxX = this.fontBox.maxX;
+        const maxY = this.fontBox.maxY;
+        w.i16(minX); w.i16(minY); w.i16(maxX); w.i16(maxY);
+        w.u16(0); w.u16(8); w.i16(2); w.i16(format); w.i16(0);
+        return w.array;
+      }
+
+      buildHhea() {
+        const is2048 = this.unitsPerEm === 2048;
+        const hheaAsc  = is2048 ? 2189 : 1069;
+        const hheaDesc = is2048 ? -600 : -293;
+        const w = new Writer();
+        w.u16(1); w.u16(0);           // majorVersion, minorVersion
+        w.i16(hheaAsc);               // ascender
+        w.i16(hheaDesc);              // descender
+        w.i16(0);                     // lineGap
+        w.u16(Math.max(...this.glyphs.map(g => g.advanceWidth))); // advanceWidthMax
+        w.i16(0); w.i16(0); w.i16(0); // minLSB, minRSB, xMaxExtent
+        w.i16(1); w.i16(0); w.i16(0); // caretSlopeRise, caretSlopeRun, caretOffset
+        w.i16(0); w.i16(0); w.i16(0); w.i16(0); // reserved
+        w.i16(0);                     // metricDataFormat
+        w.u16(this.glyphs.length);    // numberOfHMetrics
+        return w.array;
+      }
+
+      buildHmtx() {
+        const w = new Writer();
+        for (const g of this.glyphs) {
+          const box = g.contours.length ? contoursBBox(g.contours) : { x: 0 };
+          w.u16(g.advanceWidth);
+          w.i16(Math.round(box.x));
+        }
+        return w.array;
+      }
+
+      buildMaxp() {
+        const maxPoints = Math.max(0, ...this.glyphs.map(g => g.contours.reduce((n, c) => n + c.length, 0)));
+        const maxContours = Math.max(0, ...this.glyphs.map(g => g.contours.length));
+        const w = new Writer();
+        w.u32(0x00010000);
+        w.u16(this.glyphs.length);
+        w.u16(maxPoints);
+        w.u16(maxContours);
+        for (let i = 0; i < 11; i++) w.u16(0);
+        return w.array;
+      }
+
+      buildName() {
+        const year = new Date().getFullYear();
+        const familyClean = this.familyName.replace(/[^A-Za-z0-9]/g, '');
+        const trademark = ' is a trademark of Beijing Xinmeihutong Technology Co., LTD.  registered in the People\'s Republic of China and Trademark Office and may be registered in certain other jurisdictions. ';
+        const license = 'This font software is the property of Beijing Xinmeihutong Technology Co., LTD. or one of its affiliated entities (collectively, Kika) and its use by you is covered under the terms of a license agreement. You have obtained this font software either directly from HyFont Studio, Kika or together with software distributed by one of the licensees of Kika. This software is a valuable asset of Kika. Unless you have entered into a specific license agreement granting you additional rights, your use of this software is limited by the terms of the actual license agreement you have entered into with Kika. You may not copy or distribute this software. If you have any questions concerning your rights you should review the license agreement you received with the software. You can learn more about Kika and HyFont Studio by clicking here: www.kikatech.com or www.hyfont.com.';
+        const records_raw = [
+          [1,  this.familyName,                                         1, 0,      0],
+          [2,  'Regular',                                               1, 0,      0],
+          [4,  this.familyName + ' Regular',                            1, 0,      0],
+          [5,  'Version 1.000',                                         1, 0,      0],
+          [6,  familyClean + '-Regular',                                1, 0,      0],
+          [1,  this.familyName,                                         3, 1, 0x0409],
+          [2,  'Regular',                                               3, 1, 0x0409],
+          [3,  this.familyName + ' Regular ' + Date.now(),              3, 1, 0x0409],
+          [4,  this.familyName + ' Regular',                            3, 1, 0x0409],
+          [5,  'Version 1.000',                                         3, 1, 0x0409],
+          [6,  familyClean + '-Regular',                                3, 1, 0x0409],
+          [0,  'Copyright \u00A9 ' + year + ' Beijing Xinmeihutong Technology Co., LTD. All rights reserved. ', 3, 1, 0x0409],
+          [1,  this.familyName,                                         3, 1, 0x0404],
+          [2,  'Regular',                                               3, 1, 0x0404],
+          [3,  'Version 1.000;Kika;' + familyClean + '-Regular;1969;FL842', 3, 1, 0x0404],
+          [4,  this.familyName + ' Regular',                            3, 1, 0x0404],
+          [5,  'Version 1.000',                                         3, 1, 0x0404],
+          [6,  familyClean + '-Regular',                                3, 1, 0x0404],
+          [7,  trademark,                                               3, 1, 0x0404],
+          [8,  'Beijing Xinmeihutong Technology Co., LTD. ',            3, 1, 0x0404],
+          [9,  'Beijing Xinmeihutong Technology Co., LTD. ',            3, 1, 0x0404],
+          [11, 'http://www.kikatech.com',                               3, 1, 0x0404],
+          [12, 'http://www.hyfont.com',                                 3, 1, 0x0404],
+          [13, license,                                                 3, 1, 0x0404],
+          [14, 'http://www.hyfont.com',                                 3, 1, 0x0404],
+        ];
+        const records = [];
+        const storage = new Writer();
+        for (const [nameID, text, platformID, encodingID, languageID] of records_raw) {
+          const bytes = platformID === 1 ? macRoman(text) : utf16be(text);
+          records.push({ platformID, encodingID, languageID, nameID, length: bytes.length, offset: storage.bytes.length });
+          storage.bytesOf(bytes);
+        }
+        const w = new Writer();
+        w.u16(0); w.u16(records.length); w.u16(6 + records.length * 12);
+        for (const r of records) {
+          w.u16(r.platformID); w.u16(r.encodingID); w.u16(r.languageID); w.u16(r.nameID); w.u16(r.length); w.u16(r.offset);
+        }
+        w.bytesOf(storage.array);
+        return w.array;
+      }
+
+      buildOS2() {
+        const is2048 = this.unitsPerEm === 2048;
+        const typoAsc  = is2048 ? 1556 : 760;
+        const typoDesc = is2048 ? -438 : -214;
+        const capsH    = is2048 ? 1495 : 730;
+        const xH       = is2048 ? 1059 : 517;
+        const winAsc   = is2048 ? 2189 : 1069;
+        const winDesc  = is2048 ? 600  : 293;
+        const cps = this.mappings.map(m => m.codePoint);
+        const first = Math.min(...cps);
+        const last  = Math.max(...cps);
+        const w = new Writer();
+        w.u16(4);           // offset  0: version
+        w.i16(400);         // offset  2: xAvgCharWidth
+        w.u16(400);         // offset  4: usWeightClass
+        w.u16(5);           // offset  6: usWidthClass
+        w.u16(0);           // offset  8: fsType
+        w.i16(0); w.i16(0); w.i16(0); w.i16(0); // offset 10-16: ySubscript
+        w.i16(0); w.i16(0); w.i16(0); w.i16(0); // offset 18-24: ySuperscript
+        w.i16(0); w.i16(0); // offset 26-28: yStrikeout
+        w.i16(0);           // offset 30: sFamilyClass
+        for (let i = 0; i < 10; i++) w.u8(0); // offset 32-41: panose
+        // ulUnicodeRange：依實際字符自動偵測（OpenType spec bit ranges）
+        { const ur = calcUnicodeRanges(this.mappings.map(m => m.codePoint));
+          w.u32(ur[0]); w.u32(ur[1]); w.u32(ur[2]); w.u32(ur[3]); } // offset 42-57
+        w.str('kika');      // offset 58-61: achVendID
+        w.u16(0x0040);      // offset 62: fsSelection
+        w.u16(first & 0xFFFF); // offset 64: usFirstCharIndex
+        w.u16(last  & 0xFFFF); // offset 66: usLastCharIndex
+        w.i16(typoAsc);     // offset 68: sTypoAscender
+        w.i16(typoDesc);    // offset 70: sTypoDescender
+        w.i16(0);           // offset 72: sTypoLineGap
+        w.u16(winAsc);      // offset 74: usWinAscent
+        w.u16(winDesc);     // offset 76: usWinDescent
+        // ulCodePageRange：依實際字符自動偵測
+        { const cp = calcCodePageRanges(this.mappings.map(m => m.codePoint));
+          w.u32(cp[0]); w.u32(cp[1]); } // offset 78-85
+        w.i16(xH);          // offset 86: sxHeight
+        w.i16(capsH);       // offset 88: sCapHeight
+        w.u16(0);           // offset 90: usDefaultChar
+        w.u16(32);          // offset 92: usBreakChar (space)
+        w.u16(0);           // offset 94: usMaxContext
+        return w.array;
+      }
+
+      buildPost() {
+        const w = new Writer();
+        w.u32(0x00030000);
+        w.i32(0); w.i16(0); w.u16(0); w.u32(0); w.u32(0); w.u32(0); w.u32(0); w.u32(0);
+        return w.array;
+      }
+
+      assemble(tables) {
+        const tags = Object.keys(tables).sort();
+        const numTables = tags.length;
+        const searchRange = Math.pow(2, Math.floor(Math.log2(numTables))) * 16;
+        const entrySelector = Math.floor(Math.log2(numTables));
+        const rangeShift = numTables * 16 - searchRange;
+        let offset = 12 + numTables * 16;
+        const records = tags.map(tag => {
+          const data = tables[tag];
+          const record = { tag, checksum: checksum(data), offset, length: data.length };
+          offset += paddedLength(data.length);
+          return record;
+        });
+        const w = new Writer();
+        w.u32(0x00010000); w.u16(numTables); w.u16(searchRange); w.u16(entrySelector); w.u16(rangeShift);
+        for (const r of records) {
+          w.tag(r.tag); w.u32(r.checksum); w.u32(r.offset); w.u32(r.length);
+        }
+        for (const r of records) {
+          w.bytesOf(tables[r.tag]);
+          w.pad4();
+        }
+        const out = w.array;
+        const adj = (0xB1B0AFBA - checksum(out)) >>> 0;
+        const headRecord = records.find(r => r.tag === 'head');
+        writeU32(out, headRecord.offset + 8, adj);
+        return out;
+      }
+    }
+
+    function macRoman(str) {
+      const b = [];
+      for (let i = 0; i < str.length; i++) b.push(str.charCodeAt(i) & 0xFF);
+      return new Uint8Array(b);
+    }
+    function utf16be(text) {
+      const bytes = [];
+      for (let i = 0; i < text.length; i++) {
+        const c = text.charCodeAt(i);
+        bytes.push(c >> 8, c & 255);
+      }
+      return bytes;
+    }
+
+    function checksum(data) {
+      let sum = 0;
+      for (let i = 0; i < paddedLength(data.length); i += 4) {
+        sum = (sum + (((data[i] || 0) << 24) >>> 0) + ((data[i + 1] || 0) << 16) + ((data[i + 2] || 0) << 8) + (data[i + 3] || 0)) >>> 0;
+      }
+      return sum >>> 0;
+    }
+
+    function paddedLength(n) {
+      return (n + 3) & ~3;
+    }
+
+    function writeU32(arr, offset, value) {
+      arr[offset] = (value >>> 24) & 255;
+      arr[offset + 1] = (value >>> 16) & 255;
+      arr[offset + 2] = (value >>> 8) & 255;
+      arr[offset + 3] = value & 255;
+    }
+
+    renderPreview();
+  </script>
+</body>
+</html>
