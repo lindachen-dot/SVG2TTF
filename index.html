@@ -286,6 +286,16 @@
       padding: 24px;
       line-height: 1.7;
     }
+    .prep-list {
+      margin: 6px 0 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .prep-list li { margin-bottom: 2px; }
+    .prep-list strong { color: var(--ink); font-weight: 500; }
+    .section-label { font-size: 13px; font-weight: 500; color: var(--ink); }
     .notice {
       border-left: 4px solid var(--focus);
       background: #fff9df;
@@ -328,6 +338,21 @@
           <h2>輸入設定</h2>
         </div>
         <div class="panel-body">
+          <div class="step">
+            <div class="label-row">
+              <label class="section-label">SVG 匯出前置準備</label>
+            </div>
+            <ol class="prep-list">
+              <li>將 JPG 或 PNG 圖片置入 Illustrator，使用影像描圖（Image Trace）忽略底色後轉為向量</li>
+              <li>展開（Expand）並解散群組，取得獨立的向量物件</li>
+              <li>複合字符（如 i、j、%）將多個部件重新<strong>群組</strong></li>
+              <li>每個<strong>獨立物件</strong>或<strong>群組</strong>＝一個字符，工具依此順序解析</li>
+              <li>字符排列順序依<strong>左到右、上到下</strong>的位置對應 Unicode</li>
+              <li>若需保留字符垂直位置，請在畫布上<strong>每一行</strong>畫一條<strong>水平線段</strong>作為基準線，工具會自動偵測並為每個字符對應最近的基準線</li>
+              <li>完成後存為 SVG（預設設定即可）</li>
+              <li>⚠️ 製作下一套字體前，請重新整理頁面或按下方「清除全部」</li>
+            </ol>
+          </div>
           <div class="step">
             <div class="label-row">
               <label for="svgFile">1. SVG 檔案</label>
