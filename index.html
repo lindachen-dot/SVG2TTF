@@ -525,21 +525,31 @@
       alert('無法偵測到任何 <path> 或 <g>，或上傳的不是有效 SVG 檔案。');
     }
 
+    // SVG shape tags that can be converted to TTF contours (excluding <line> which is baseline-only)
+    // polyline 是開放路徑，不納入字符
+    const SHAPE_TAGS = new Set(['path', 'polygon', 'rect', 'circle', 'ellipse']);
+    const SHAPE_SEL  = 'path,polygon,rect,circle,ellipse';
+
     function collectGlyphUnits(svg) {
-      const all = Array.from(svg.querySelectorAll('path,g'));
-      const countedGroups = new Set();
+      // Walk direct children of <svg> only (top-level layout items).
+      // A <g> at the top level = one glyph unit (may contain any shapes, nested).
+      // A bare shape at the top level = one glyph unit.
+      // <line> elements are baseline markers — always excluded.
       const units = [];
-      for (const el of all) {
-        if (el.localName === 'g') {
-          if (el.querySelector('path')) {
+
+      const topChildren = Array.from(svg.children);
+      for (const el of topChildren) {
+        const tag = el.localName;
+        if (tag === 'line') continue; // baseline marker — skip
+        if (tag === 'g') {
+          // Include group if it contains at least one renderable shape (anywhere inside)
+          if (el.querySelector(SHAPE_SEL)) {
             units.push(el);
-            countedGroups.add(el);
           }
           continue;
         }
-        if (el.localName === 'path') {
-          const insideCountedGroup = Array.from(countedGroups).some(g => g.contains(el));
-          if (!insideCountedGroup) units.push(el);
+        if (SHAPE_TAGS.has(tag)) {
+          units.push(el);
         }
       }
       return units;
@@ -573,23 +583,185 @@
         .map((glyph, index) => ({ ...glyph, index }));
     }
 
-    function makeGlyph(unit, index) {
-      const paths = unit.localName === 'path' ? [unit] : Array.from(unit.querySelectorAll('path'));
-      const contours = [];
-      for (const pathEl of paths) {
-        const d = pathEl.getAttribute('d') || '';
-        const parsed = parsePathData(d);
-        for (const contour of parsed) {
-          if (contour.length > 1) contours.push(contour);
-        }
+    // ── Shape → contour converters ──────────────────────────────────────────────
+
+    function polygonToContour(el) {
+      const pts = parsePoints(el.getAttribute('points') || '');
+      return pts.map(([x, y]) => ({ x, y, on: true }));
+    }
+
+    // polyline: open path — treat as closed for TTF purposes
+    function polylineToContour(el) {
+      return polygonToContour(el); // same points attribute
+    }
+
+    function rectToContour(el) {
+      const x  = parseFloat(el.getAttribute('x')      || 0);
+      const y  = parseFloat(el.getAttribute('y')      || 0);
+      const w  = parseFloat(el.getAttribute('width')  || 0);
+      const h  = parseFloat(el.getAttribute('height') || 0);
+      const rx = Math.min(parseFloat(el.getAttribute('rx') || el.getAttribute('ry') || 0), w / 2);
+      const ry = Math.min(parseFloat(el.getAttribute('ry') || el.getAttribute('rx') || 0), h / 2);
+      if (rx <= 0 && ry <= 0) {
+        // Sharp rectangle — 4 on-curve points
+        return [
+          { x,         y,         on: true },
+          { x: x + w,  y,         on: true },
+          { x: x + w,  y: y + h,  on: true },
+          { x,         y: y + h,  on: true },
+        ];
       }
+      // Rounded rect — approximate arcs with cubic->quadratic via parsePathData
+      const d = `M ${x + rx} ${y}`
+        + ` L ${x + w - rx} ${y} Q ${x + w} ${y} ${x + w} ${y + ry}`
+        + ` L ${x + w} ${y + h - ry} Q ${x + w} ${y + h} ${x + w - rx} ${y + h}`
+        + ` L ${x + rx} ${y + h} Q ${x} ${y + h} ${x} ${y + h - ry}`
+        + ` L ${x} ${y + ry} Q ${x} ${y} ${x + rx} ${y} Z`;
+      const parsed = parsePathData(d);
+      return parsed.length ? parsed[0] : [];
+    }
+
+    // Circle: approximate with 4 cubic bezier arcs → quadratic via parsePathData
+    function circleToContours(el) {
+      const cx = parseFloat(el.getAttribute('cx') || 0);
+      const cy = parseFloat(el.getAttribute('cy') || 0);
+      const r  = parseFloat(el.getAttribute('r')  || 0);
+      if (r <= 0) return [];
+      return ellipseToContours2(cx, cy, r, r);
+    }
+
+    function ellipseToContours(el) {
+      const cx = parseFloat(el.getAttribute('cx') || 0);
+      const cy = parseFloat(el.getAttribute('cy') || 0);
+      const rx = parseFloat(el.getAttribute('rx') || 0);
+      const ry = parseFloat(el.getAttribute('ry') || 0);
+      if (rx <= 0 || ry <= 0) return [];
+      return ellipseToContours2(cx, cy, rx, ry);
+    }
+
+    // Build a circle/ellipse contour via a synthetic path (4 cubic arcs)
+    function ellipseToContours2(cx, cy, rx, ry) {
+      // kappa constant for cubic bezier circle approximation
+      const k = 0.5522847498;
+      const d = `M ${cx} ${cy - ry}`
+        + ` C ${cx + rx * k} ${cy - ry} ${cx + rx} ${cy - ry * k} ${cx + rx} ${cy}`
+        + ` C ${cx + rx} ${cy + ry * k} ${cx + rx * k} ${cy + ry} ${cx} ${cy + ry}`
+        + ` C ${cx - rx * k} ${cy + ry} ${cx - rx} ${cy + ry * k} ${cx - rx} ${cy}`
+        + ` C ${cx - rx} ${cy - ry * k} ${cx - rx * k} ${cy - ry} ${cx} ${cy - ry} Z`;
+      return parsePathData(d);
+    }
+
+    function parsePoints(str) {
+      const nums = str.trim().split(/[\s,]+/).map(Number).filter(v => !isNaN(v));
+      const pts = [];
+      for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+      return pts;
+    }
+
+    // ── Shape → SVG preview path `d` string ──────────────────────────────────
+
+    function shapeToPathD(el) {
+      const tag = el.localName;
+      if (tag === 'polygon' || tag === 'polyline') {
+        const pts = parsePoints(el.getAttribute('points') || '');
+        if (pts.length < 2) return '';
+        let d = `M ${pts[0][0]} ${pts[0][1]}`;
+        for (let i = 1; i < pts.length; i++) d += ` L ${pts[i][0]} ${pts[i][1]}`;
+        return d + (tag === 'polygon' ? ' Z' : '');
+      }
+      if (tag === 'rect') {
+        const x  = parseFloat(el.getAttribute('x')      || 0);
+        const y  = parseFloat(el.getAttribute('y')      || 0);
+        const w  = parseFloat(el.getAttribute('width')  || 0);
+        const h  = parseFloat(el.getAttribute('height') || 0);
+        const rx = Math.min(parseFloat(el.getAttribute('rx') || el.getAttribute('ry') || 0), w / 2);
+        const ry = Math.min(parseFloat(el.getAttribute('ry') || el.getAttribute('rx') || 0), h / 2);
+        if (rx <= 0 && ry <= 0)
+          return `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+        return `M ${x + rx} ${y}`
+          + ` L ${x + w - rx} ${y} Q ${x + w} ${y} ${x + w} ${y + ry}`
+          + ` L ${x + w} ${y + h - ry} Q ${x + w} ${y + h} ${x + w - rx} ${y + h}`
+          + ` L ${x + rx} ${y + h} Q ${x} ${y + h} ${x} ${y + h - ry}`
+          + ` L ${x} ${y + ry} Q ${x} ${y} ${x + rx} ${y} Z`;
+      }
+      if (tag === 'circle') {
+        const cx = parseFloat(el.getAttribute('cx') || 0);
+        const cy = parseFloat(el.getAttribute('cy') || 0);
+        const r  = parseFloat(el.getAttribute('r')  || 0);
+        const k = 0.5522847498;
+        return `M ${cx} ${cy - r}`
+          + ` C ${cx + r * k} ${cy - r} ${cx + r} ${cy - r * k} ${cx + r} ${cy}`
+          + ` C ${cx + r} ${cy + r * k} ${cx + r * k} ${cy + r} ${cx} ${cy + r}`
+          + ` C ${cx - r * k} ${cy + r} ${cx - r} ${cy + r * k} ${cx - r} ${cy}`
+          + ` C ${cx - r} ${cy - r * k} ${cx - r * k} ${cy - r} ${cx} ${cy - r} Z`;
+      }
+      if (tag === 'ellipse') {
+        const cx = parseFloat(el.getAttribute('cx') || 0);
+        const cy = parseFloat(el.getAttribute('cy') || 0);
+        const rx = parseFloat(el.getAttribute('rx') || 0);
+        const ry = parseFloat(el.getAttribute('ry') || 0);
+        const k = 0.5522847498;
+        return `M ${cx} ${cy - ry}`
+          + ` C ${cx + rx * k} ${cy - ry} ${cx + rx} ${cy - ry * k} ${cx + rx} ${cy}`
+          + ` C ${cx + rx} ${cy + ry * k} ${cx + rx * k} ${cy + ry} ${cx} ${cy + ry}`
+          + ` C ${cx - rx * k} ${cy + ry} ${cx - rx} ${cy + ry * k} ${cx - rx} ${cy}`
+          + ` C ${cx - rx} ${cy - ry * k} ${cx - rx * k} ${cy - ry} ${cx} ${cy - ry} Z`;
+      }
+      return '';
+    }
+
+    function makeGlyph(unit, index) {
+      const contours = [];
+      const previewPaths = []; // `d` strings for SVG preview
+
+      const processElement = (el) => {
+        const tag = el.localName;
+        if (tag === 'path') {
+          const d = el.getAttribute('d') || '';
+          // parsePathData 只回傳有 Z 結尾的閉合 contour；開放路徑片段直接丟棄
+          const parsed = parsePathData(d);
+          for (const contour of parsed) {
+            if (contour.length > 1) contours.push(contour);
+          }
+          if (parsed.length) previewPaths.push(d);
+        } else if (tag === 'polygon') {
+          const contour = polygonToContour(el);
+          if (contour.length > 1) { contours.push(contour); previewPaths.push(shapeToPathD(el)); }
+        } else if (tag === 'rect') {
+          const contour = rectToContour(el);
+          if (contour.length > 1) { contours.push(contour); previewPaths.push(shapeToPathD(el)); }
+        } else if (tag === 'circle') {
+          const cs = circleToContours(el);
+          for (const c of cs) if (c.length > 1) contours.push(c);
+          if (cs.length) previewPaths.push(shapeToPathD(el));
+        } else if (tag === 'ellipse') {
+          const cs = ellipseToContours(el);
+          for (const c of cs) if (c.length > 1) contours.push(c);
+          if (cs.length) previewPaths.push(shapeToPathD(el));
+        }
+        // polyline / line / text / image … → 忽略
+      };
+
+      if (unit.localName === 'g') {
+        // 遞迴處理 <g> 內所有後代形狀（支援巢狀 <g>）
+        const walk = (node) => {
+          for (const child of node.children) {
+            if (SHAPE_TAGS.has(child.localName)) processElement(child);
+            else if (child.localName === 'g') walk(child);
+          }
+        };
+        walk(unit);
+      } else {
+        processElement(unit);
+      }
+
       const box = contoursBBox(contours);
       if (!box) return null;
       return {
         index,
         type: unit.localName,
         element: unit,
-        paths: paths.map(p => p.getAttribute('d') || ''),
+        paths: previewPaths,
         contours,
         box,
         paddedBox: {
@@ -789,6 +961,7 @@
       const tokens = tokenizePath(d);
       const contours = [];
       let contour = [];
+      let closed = false; // 追蹤當前 contour 是否有遇到 Z
       let i = 0, cmd = '';
       let x = 0, y = 0, sx = 0, sy = 0;
       let lastC = null, lastQ = null;
@@ -802,8 +975,10 @@
           }
           contours.push(cleanContour(contour));
           contour = [];
+          closed = false;
         }
         x = sx; y = sy;
+        closed = true; // Z を経由した contour
       };
 
       while (i < tokens.length) {
@@ -817,8 +992,9 @@
             const px = rel ? x + nx : nx;
             const py = rel ? y + ny : ny;
             if (first) {
-              if (contour.length) contours.push(cleanContour(contour));
+              // 前一個 contour 若沒有 Z，捨棄（開放路徑）
               contour = [];
+              closed = false;
               sx = px; sy = py;
               add(px, py);
               first = false;
@@ -883,7 +1059,7 @@
           throw new Error('不支援的 SVG path 指令：' + cmd);
         }
       }
-      if (contour.length) contours.push(cleanContour(contour));
+      // 末尾若有未閉合的 contour，直接捨棄（開放路徑）
       return contours.filter(c => c.length > 1);
     }
 
