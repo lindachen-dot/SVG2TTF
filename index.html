@@ -1228,23 +1228,61 @@
         return glyph.box.y + glyph.box.height * 0.85; // 估算：保留 15% 給下伸部
       }
 
+      // 組合符號排除清單：這些 codePoint 不參與 scaleLimits 計算
+      // 避免上標母音、聲調等符號把縮放比例壓得過小
+      const EXCLUDE_FROM_SCALE = new Set([
+        // Thai：上標母音／聲調
+        0x0E31,
+        0x0E34, 0x0E35, 0x0E36, 0x0E37, 0x0E38, 0x0E39, 0x0E3A,
+        0x0E47, 0x0E48, 0x0E49, 0x0E4A, 0x0E4B, 0x0E4C, 0x0E4D, 0x0E4E,
+        // Arabic：母音符號 Harakat
+        0x064B, 0x064C, 0x064D, 0x064E, 0x064F, 0x0650, 0x0651, 0x0652,
+        0x0654, 0x0655,
+        // Devanagari：頂線上方符號
+        0x0900, 0x0901, 0x0902, 0x0903,
+        0x093A, 0x093B, 0x093C, 0x093D, 0x093E, 0x093F, 0x0940,
+        // Bengali：頂線上方符號
+        0x0981, 0x0982, 0x0983,
+        0x09BE, 0x09BF, 0x09C0, 0x09C1, 0x09C2, 0x09C3, 0x09C4,
+        // Khmer：堆疊下標輔音符號
+        0x17B6, 0x17B7, 0x17B8, 0x17B9, 0x17BA, 0x17BB, 0x17BC, 0x17BD,
+        0x17BE, 0x17BF, 0x17C0, 0x17C1, 0x17C2, 0x17C3, 0x17C4, 0x17C5,
+        0x17C6, 0x17C7, 0x17C8, 0x17C9, 0x17CA, 0x17CB, 0x17CC, 0x17CD,
+        0x17CE, 0x17CF, 0x17D0, 0x17D1, 0x17D2, 0x17D3,
+        // Lao：上方符號
+        0x0EB1,
+        0x0EB4, 0x0EB5, 0x0EB6, 0x0EB7, 0x0EB8, 0x0EB9,
+        // Myanmar：堆疊符號
+        0x102D, 0x102E, 0x102F, 0x1030,
+        0x1032, 0x1033, 0x1034, 0x1035, 0x1036,
+      ]);
+
       // 各字符的 above/below（SVG px）
-      const metrics = glyphs.map(g => {
+      // 排除組合符號，避免它們影響 scaleLimits
+      const metrics = glyphs.map((g, i) => {
+        const cp = mappings[i] ? mappings[i].codePoint : -1;
         const bl = getBaselineY(g);
-        const above = bl - g.box.y;                          // 基線以上高度
-        const below = (g.box.y + g.box.height) - bl;        // 基線以下高度
-        return { above: Math.max(above, 0.001), below: Math.max(below, 0.001) };
+        const above = bl - g.box.y;
+        const below = (g.box.y + g.box.height) - bl;
+        return {
+          above: Math.max(above, 0.001),
+          below: Math.max(below, 0.001),
+          excluded: EXCLUDE_FROM_SCALE.has(cp)
+        };
       });
 
       // 每個字符允許的最大縮放（不超 BBox 硬限）
-      const scaleLimits = metrics.map(m => Math.min(
-        BBOX_TOP    / m.above,
-        BBOX_BOTTOM / m.below
-      ));
+      // 排除清單內的符號不參與
+      const scaleLimits = metrics
+        .filter(m => !m.excluded)
+        .map(m => Math.min(
+          BBOX_TOP    / m.above,
+          BBOX_BOTTOM / m.below
+        ));
 
       // 全局縮放 = 取最保守值，同時不超過「75百分位字高對齊 cap-height」的目標上限
       // 用 75% 而非中位數：排除符號類等極高字符拉動縮放基準
-      const aboves = metrics.map(m => m.above).sort((a, b) => a - b);
+      const aboves = metrics.filter(m => !m.excluded).map(m => m.above).sort((a, b) => a - b);
       const p75Above = aboves[Math.floor(aboves.length * 0.75)] || 1;
       const scaleTarget = TARGET_CAP / p75Above;
       const scale = Math.min(scaleTarget, ...scaleLimits);
@@ -1269,16 +1307,27 @@
         });
       }
       // 從實際縮放後的字符反推 capsHeight / xHeight
-      // 優先清單：各語言平頂無伸部的基準字（codePoint）
+      // Latin 優先，找不到再往後找其他語言
       const CAP_CPS = [
-        0x0048, 0x0049, 0x0045, 0x0046, 0x0054, // 拉丁  H I E F T
-        0x0397, 0x0399, 0x0395,                  // 希臘  Η Ι Ε
-        0x041D, 0x0418, 0x0415,                  // 西里爾 Н И Е
+        0x0048, 0x0049, 0x0045, 0x0046, 0x0054, // Latin    H I E F T
+        0x0397, 0x0399, 0x0395,                  // Greek    Η Ι Ε
+        0x041D, 0x0418, 0x0415,                  // Cyrillic Н И Е
+        0x0E01, 0x0E21,                          // Thai     ก ม
+        0x0645, 0x0628,                          // Arabic   م ب
+        0x0915, 0x092E,                          // Devanagari क म
+        0x05DE, 0x05E0,                          // Hebrew   מ נ
+        0x0995, 0x09AE,                          // Bengali  ক ম
+        0x1780, 0x1798,                          // Khmer    ក ម
+        0x0B95, 0x0BAE,                          // Tamil    க ம
+        0x0C15, 0x0C2E,                          // Telugu   క మ
+        0x0E81, 0x0EA1,                          // Lao      ກ ມ
+        0x1000, 0x1019,                          // Myanmar  က မ
       ];
       const X_CPS = [
-        0x0078, 0x006F, 0x006E, 0x007A,          // 拉丁  x o n z
-        0x03BF, 0x03BD, 0x03B5,                  // 希臘  ο ν ε
-        0x043E, 0x043D, 0x0435,                  // 西里爾 о н е
+        0x0078, 0x006F, 0x006E, 0x007A,          // Latin    x o n z
+        0x03BF, 0x03BD, 0x03B5,                  // Greek    ο ν ε
+        0x043E, 0x043D, 0x0435,                  // Cyrillic о н е
+        // 以下語言無大小寫之分，x-height 不適用，退回預設值
       ];
       function glyphYMax(fg) {
         const pts = fg.contours.flat();
